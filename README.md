@@ -2,6 +2,11 @@
 
 A powerful webpage-based visualization tool for displaying and labeling CSV data. This tool provides two modes: **View Mode** for exploring data and **Label Mode** for adding labels to your dataset.
 
+
+## 🖼️ Demo
+
+![Demo of CSV Data Visualizer](demo.gif)
+
 ## 🎯 Features
 
 ### View Mode
