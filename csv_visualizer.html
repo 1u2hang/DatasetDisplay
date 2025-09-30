@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn:not(.active) {
+            background: #f8f9fa;
+            color: #666;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 80px);
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .row-input {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .column-selector {
+            margin-bottom: 20px;
+        }
+
+        .column-selector h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .column-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .column-checkbox:hover {
+            background: #f8f9fa;
+        }
+
+        .column-checkbox input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .column-checkbox label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .data-blocks {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        /* Adaptive sizing for different modes */
+        .data-blocks.view-mode {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .data-blocks.label-mode {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+
+        /* Responsive breakpoints */
+        @media (max-width: 1200px) {
+            .data-blocks {
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            }
+            .data-blocks.label-mode {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .data-blocks {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+            .data-blocks.label-mode {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            .data-blocks {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dynamic grid sizing based on number of columns */
+        .data-blocks.single-column {
+            grid-template-columns: 1fr;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .data-blocks.two-columns {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .data-blocks.four-columns {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .data-blocks.four-columns.label-mode {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .data-block {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+            min-width: 0; /* Allow flex shrinking */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .data-block h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-value {
+            color: #666;
+            line-height: 1.6;
+            word-break: break-word;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+
+        .label-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .label-input {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        /* Responsive label controls */
+        @media (max-width: 768px) {
+            .label-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .label-input {
+                min-width: auto;
+            }
+            
+            .label-btn {
+                min-width: 40px;
+            }
+        }
+
+        .label-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .label-btn-0 { background: #2e7d32; color: white; }
+        .label-btn-1 { background: #e53935; color: white; }
+        .label-btn-2 { background: #ff9800; color: white; }
+        .label-btn-3 { background: #2196f3; color: white; }
+        .label-btn-4 { background: #9c27b0; color: white; }
+
+        .label-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .label-btn.active {
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .instructions {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .instructions h4 {
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+        }
+
+        .row-info {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 80px);
+            }
+            
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+            
+            .main-content {
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 CSV Data Visualizer</h1>
+        <div class="mode-selector">
+            <button class="mode-btn active" id="viewMode" onclick="switchMode('view')">View Mode</button>
+            <button class="mode-btn" id="labelMode" onclick="switchMode('label')">Label Mode</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="instructions">
+                <h4>🎮 Controls</h4>
+                <ul>
+                    <li><strong>Mouse Wheel:</strong> Navigate up/down rows</li>
+                    <li><strong>Arrow Keys:</strong> ↑↓ to navigate rows</li>
+                    <li><strong>Row Input:</strong> Jump to specific row number</li>
+                    <li><strong>Buttons:</strong> Previous/Next navigation</li>
+                </ul>
+                <h4 id="modeInstructions">📊 View Mode</h4>
+                <ul id="modeInstructionsList">
+                    <li>View CSV data in organized blocks</li>
+                    <li>Toggle column visibility</li>
+                    <li>Navigate through rows</li>
+                </ul>
+            </div>
+
+            <div class="controls">
+                <input type="number" class="row-input" id="rowInput" placeholder="Row #" min="0">
+                <button class="btn btn-primary" onclick="goToRow()">Go to Row</button>
+                <button class="btn btn-secondary" onclick="previousRow()">← Previous</button>
+                <button class="btn btn-secondary" onclick="nextRow()">Next →</button>
+            </div>
+
+            <!-- Label-mode actions -->
+            <div class="controls" id="labelActions" style="display:none">
+                <button class="btn btn-primary" onclick="promptAddColumn()">Add New Column</button>
+            </div>
+
+            <div class="row-info">
+                <div>Row: <span id="currentRow">0</span> of <span id="totalRows">0</span></div>
+            </div>
+
+            <div class="column-selector">
+                <h3>📋 Column Visibility</h3>
+                <div id="columnCheckboxes"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="dataContent">
+                <div class="loading">
+                    <div style="font-size: 24px; margin-bottom: 10px;">📊</div>
+                    <div>Loading CSV data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let data = [];
+        let currentRow = 0;
+        let isLoading = true;
+        let currentMode = 'view';
+        let visibleColumns = new Set();
+        let columnLabels = new Map(); // Map column names to label names
+
+        // Load CSV data
+        async function loadData() {
+            try {
+                console.log('Loading CSV data...');
+                const csvUrl = '/csv';
+                const csvData = await d3.csv(csvUrl);
+                console.log(`Loaded ${csvData.length} rows`);
+                
+                data = csvData;
+                document.getElementById('totalRows').textContent = data.length;
+                currentRow = 0;
+                isLoading = false;
+                
+                if (data.length > 0) {
+                    console.log('First row data:', data[0]);
+                    initializeColumns();
+                    displayCurrentRow();
+                } else {
+                    console.error('No data found in CSV file');
+                    showError('No data found in CSV file');
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showError(`Error loading data: ${error.message}<br><br>Make sure the server is running:<br><code>python3 serve_data.py</code><br><br>Check browser console for more details.`);
+            }
+        }
+
+        function initializeColumns() {
+            if (data.length === 0) return;
+            
+            const columns = Object.keys(data[0]);
+            const checkboxContainer = document.getElementById('columnCheckboxes');
+            
+            // Initialize all columns as visible
+            visibleColumns = new Set(columns);
+            
+            checkboxContainer.innerHTML = '';
+            columns.forEach(column => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'column-checkbox';
+                checkboxDiv.innerHTML = `
+                    <input type="checkbox" id="col_${column}" checked onchange="toggleColumn('${column}')">
+                    <label for="col_${column}">${column}</label>
+                `;
+                checkboxContainer.appendChild(checkboxDiv);
+            });
+        }
+
+        function toggleColumn(column) {
+            const checkbox = document.getElementById(`col_${column}`);
+            if (checkbox.checked) {
+                visibleColumns.add(column);
+            } else {
+                visibleColumns.delete(column);
+            }
+            displayCurrentRow();
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            document.getElementById('viewMode').classList.toggle('active', mode === 'view');
+            document.getElementById('labelMode').classList.toggle('active', mode === 'label');
+            document.getElementById('labelActions').style.display = (mode === 'label') ? 'flex' : 'none';
+            
+            // Update instructions
+            const instructionsTitle = document.getElementById('modeInstructions');
+            const instructionsList = document.getElementById('modeInstructionsList');
+            
+            if (mode === 'view') {
+                instructionsTitle.textContent = '📊 View Mode';
+                instructionsList.innerHTML = `
+                    <li>View CSV data in organized blocks</li>
+                    <li>Toggle column visibility</li>
+                    <li>Navigate through rows</li>
+                `;
+            } else {
+                instructionsTitle.textContent = '🏷️ Label Mode';
+                instructionsList.innerHTML = `
+                    <li>Add labels to CSV data</li>
+                    <li>Create new labeled CSV file</li>
+                    <li>Set label values (0-4)</li>
+                `;
+            }
+            
+            displayCurrentRow();
+        }
+
+        function showError(message) {
+            document.getElementById('dataContent').innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function displayCurrentRow() {
+            if (isLoading || data.length === 0) return;
+            
+            const row = data[currentRow];
+            console.log(`Displaying row ${currentRow}:`, row);
+            
+            // Update row input and info
+            document.getElementById('rowInput').value = currentRow;
+            document.getElementById('currentRow').textContent = currentRow + 1;
+            
+            // Display data blocks
+            displayDataBlocks(row);
+        }
+
+        function displayDataBlocks(row) {
+            const dataContent = document.getElementById('dataContent');
+            const visibleCols = Array.from(visibleColumns);
+            
+            if (visibleCols.length === 0) {
+                dataContent.innerHTML = `
+                    <div class="loading">
+                        <div style="font-size: 24px; margin-bottom: 10px;">👁️</div>
+                        <div>No columns selected. Please select columns from the sidebar.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Dynamic grid sizing based on number of columns
+            const numCols = visibleCols.length;
+            let gridClass = `${currentMode}-mode`;
+            
+            if (numCols === 1) {
+                gridClass += ' single-column';
+            } else if (numCols <= 2) {
+                gridClass += ' two-columns';
+            } else if (numCols <= 4) {
+                gridClass += ' four-columns';
+            }
+            
+            const blocksHtml = visibleCols.map(column => {
+                const value = row[column] || 'N/A';
+                const labelName = columnLabels.get(column) || column;
+                
+                if (currentMode === 'view') {
+                    return `
+                        <div class="data-block">
+                            <h3>📋 ${column}</h3>
+                            <div class="data-value">${value}</div>
+                        </div>
+                    `;
+                } else {
+                    // Label mode - add label controls
+                    return `
+                        <div class="data-block">
+                            <h3>📋 ${column}</h3>
+                            <div class="data-value">${value}</div>
+                            <div class="label-controls">
+                                <input type="text" class="label-input" placeholder="Label name" value="${labelName}" onchange="updateLabelName('${column}', this.value)">
+                                <button class="label-btn label-btn-0" onclick="setLabel('${column}', 0)">0</button>
+                                <button class="label-btn label-btn-1" onclick="setLabel('${column}', 1)">1</button>
+                                <button class="label-btn label-btn-2" onclick="setLabel('${column}', 2)">2</button>
+                                <button class="label-btn label-btn-3" onclick="setLabel('${column}', 3)">3</button>
+                                <button class="label-btn label-btn-4" onclick="setLabel('${column}', 4)">4</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+            
+            dataContent.innerHTML = `
+                <div class="data-blocks ${gridClass}">
+                    ${blocksHtml}
+                </div>
+            `;
+        }
+
+        function updateLabelName(column, labelName) {
+            columnLabels.set(column, labelName);
+        }
+
+        async function promptAddColumn() {
+            const defaultName = `label_${Date.now()}`;
+            const column = prompt('Enter new column name:', defaultName);
+            if (!column) return;
+            await addNewColumn(column.trim());
+        }
+
+        async function addNewColumn(columnName) {
+            try {
+                const response = await fetch('/add_column', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ column: columnName })
+                });
+                if (!response.ok) throw new Error(await response.text());
+
+                // Update local state: add to visible columns and label map
+                visibleColumns.add(columnName);
+                columnLabels.set(columnName, columnName);
+
+                // Update sidebar checkboxes
+                initializeColumns();
+                // Re-render current row
+                displayCurrentRow();
+
+                showPopupMessage(`✅ Column "${columnName}" added`, 'success');
+            } catch (error) {
+                console.error('Failed to add column:', error);
+                showPopupMessage('❌ Failed to add column', 'error');
+            }
+        }
+
+        async function setLabel(column, value) {
+            if (currentMode !== 'label') return;
+            
+            try {
+                const labelName = columnLabels.get(column) || column;
+                const response = await fetch('/update_label', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        row: currentRow, 
+                        column: column,
+                        labelName: labelName,
+                        value: value 
+                    })
+                });
+                
+                if (!response.ok) throw new Error(await response.text());
+                
+                const result = await response.json();
+                console.log('Label updated:', result);
+                
+                // Update local data
+                if (!data[currentRow][labelName]) {
+                    data[currentRow][labelName] = value;
+                } else {
+                    data[currentRow][labelName] = value;
+                }
+                
+                showPopupMessage(`✅ Label "${labelName}" set to ${value}`, 'success');
+                
+            } catch (error) {
+                console.error('Failed to update label:', error);
+                showPopupMessage('❌ Failed to save label', 'error');
+            }
+        }
+
+        function showPopupMessage(message, type = 'info') {
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 10000;
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+                color: white; padding: 12px 20px; border-radius: 8px;
+                font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                max-width: 300px; word-wrap: break-word;
+            `;
+            messageDiv.textContent = message;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 3000);
+        }
+
+        function goToRow() {
+            const input = document.getElementById('rowInput');
+            const rowNumber = parseInt(input.value);
+            
+            if (isNaN(rowNumber) || rowNumber < 0 || rowNumber >= data.length) {
+                alert(`Please enter a valid row number between 0 and ${data.length - 1}`);
+                return;
+            }
+            
+            currentRow = rowNumber;
+            displayCurrentRow();
+        }
+
+        function previousRow() {
+            if (currentRow > 0) {
+                currentRow--;
+                displayCurrentRow();
+            }
+        }
+
+        function nextRow() {
+            if (currentRow < data.length - 1) {
+                currentRow++;
+                displayCurrentRow();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (isLoading) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    previousRow();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    nextRow();
+                    break;
+                case 'Enter':
+                    if (document.activeElement.id === 'rowInput') {
+                        e.preventDefault();
+                        goToRow();
+                    }
+                    break;
+            }
+        });
+
+        // Mouse wheel navigation
+        document.addEventListener('wheel', (e) => {
+            if (isLoading) return;
+            
+            e.preventDefault();
+            if (e.deltaY > 0) {
+                nextRow();
+            } else {
+                previousRow();
+            }
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
+
