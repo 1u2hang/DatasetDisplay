@@ -130,17 +130,8 @@ Options:
 - **Frontend**: HTML5, CSS3, JavaScript, D3.js v7
 - **Backend**: Python HTTP server
 - **Data Format**: CSV with UTF-8 encoding
-- **Responsive Design**: Mobile-friendly interface
-- **CORS Enabled**: Cross-origin requests supported
 
-## 🎨 Features
 
-- **Beautiful UI**: Modern gradient design with smooth animations
-- **Responsive Layout**: Adapts to different screen sizes
-- **Error Handling**: Graceful handling of missing data
-- **Performance**: Efficient data loading and rendering
-- **Accessibility**: Keyboard navigation support
-- **Real-time Updates**: Instant label saving and CSV updates
 
 ## 🚨 Troubleshooting
 
@@ -173,32 +164,15 @@ netstat -tulpn | grep :8000
 - Check that the labeled CSV file is being created
 - Verify label names don't contain special characters
 
-## 📈 Usage Tips
-
-1. **Start with View Mode** to explore your data structure
-2. **Use column filtering** to focus on relevant data
-3. **Switch to Label Mode** when ready to add annotations
-4. **Use consistent label names** across columns for better organization
-5. **Check the labeled CSV file** to verify your annotations
 
 ## 🔍 Data Requirements
 
 - **Format**: Standard CSV with comma separators
 - **Encoding**: UTF-8 recommended
 - **Headers**: First row should contain column names
-- **Size**: No specific limit, but large files may load slowly
+- **Size**: Large files may load slowly
 
-## 📱 Browser Compatibility
 
-- **Chrome**: Full support
-- **Firefox**: Full support
-- **Safari**: Full support
-- **Edge**: Full support
-- **Mobile Browsers**: Responsive design supported
-
-## 🤝 Contributing
-
-This tool is designed to be simple and extensible. Feel free to modify the code to suit your specific needs.
 
 ## 📄 License
 
